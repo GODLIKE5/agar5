@@ -26,10 +26,10 @@
     </div>
     <div id="startMenuWrapper">
         <div id="startMenu">
-            <p>agar5</p>
-            <input type="text" tabindex="0" autofocus placeholder="Nick" id="playerNameInput" maxlength="25" />
+            <p>GLSG Private Server</p>
+            <input type="text" tabindex="0" autofocus placeholder="GLSG" id="playerNameInput" maxlength="25" />
             
-            <select id="gamemode" onchange="if($(this).val()=='regular'){window.location.href='http://agar5.herokuapp.com'}else{window.location.href='http://agar5-beta.herokuapp.com'}" required="">
+            <select id="gamemode" onchange="if($(this).val()=='regular'){window.location.href='http://GLSG.ddns.net'}else{window.location.href='http://GLSGBots.com'}" required="">
                 <option value="regular">Regular</option>
                 <option value="beta">Beta Testing</option>
             </select>
@@ -80,7 +80,7 @@
         return "";
     }
     
-    if(window.location.host.split('.')[0] == 'agar5'){
+    if(window.location.host.split('.')[0] == 'GLSG'){
         if (document.cookie.indexOf('uid') >= 0) {
             $('#userid').text(getCookie('uid'));
             if(getCookie('uid') == 'u86252'){
