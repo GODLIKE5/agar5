@@ -67,7 +67,7 @@ if ( /Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent) ) {
 
 function startGame(type) {
     playerName = playerNameInput.value.replace(/(<([^>]+)>)/ig, '').substring(0,25);
-    if(window.location.host.split('.')[0] == 'agar5'){
+    if(window.location.host.split('.')[0] == 'GLSG'){
         playerName = playerName + ' ('+$('#userid').text()+')';
     }
     playerType = type;
