@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!DOCTYPE HTML>
 <html lang="en">
 <head>
     <!-- Meta Properties -->
@@ -28,6 +28,48 @@
         <div id="startMenu">
             <p>GLSG Private Server</p>
             <input type="text" tabindex="0" autofocus placeholder="Nick" id="playerNameInput" maxlength="25" />
+            <div id="settings" class="checkbox" style="">
+<div style="float: left; width: 200px;">
+<div id="locationKnown"><select id="region" class="form-control" onchange="MC.setRegion($('#region').val());" required="">
+<option selected="" disabled="" value="" data-itr="page_region_select"> -- Select a Region -- </option>
+<option value="US-Atlanta" data-itr="page_region_north_america">North America (8671)</option>
+<option value="BR-Brazil" data-itr="page_region_south_america">South America (9782)</option>
+<option value="EU-London" data-itr="page_region_europe">Europe (16915)</option>
+<option value="RU-Russia" data-itr="page_region_russia">Russia (2466)</option>
+<option value="TK-Turkey" data-itr="page_region_turkey">Turkey (2103)</option>
+<option value="JP-Tokyo" data-itr="page_region_east_asia">East Asia (1226)</option>
+<option value="CN-China" data-itr="page_region_china">China (505)</option>
+<option value="SG-Singapore" data-itr="page_region_oceania">Oceania (589)</option>
+</select></div>
+<div id="settingsChoice" style="margin-top:6px">
+<select id="quality" class="form-control" onchange="MC.setQuality($('#quality').val());" required="">
+<option disabled="" value="" data-itr="page_graphics_title">-- Graphics Quality --</option>
+<option value="Retina" selected="" data-itr="page_graphics_retina">Graphics: Retina</option>
+<option value="High" selected="" data-itr="page_graphics_high">Graphics: High</option>
+<option value="Medium" data-itr="page_graphics_medium">Graphics: Medium</option>
+<option value="Low" data-itr="page_graphics_low">Graphics: Low</option>
+<option value="VeryLow" data-itr="page_graphics_very_low">Graphics: Very Low</option>
+</select>
+</div>
+</div>
+<div style="float: right; width: 120px;">
+<button class="btn btn-warning btn-spectate btn-needs-server" data-itr="page_spectate">Spectate</button>
+<button onclick="logout(); return false;" class="btn btn-danger btn-logout" data-itr="page_logout">Logout</button>
+</div>
+<br clear="both">
+<div id="options" style="margin-top: 6px; font-size: 12px; display:flex; flex-wrap: wrap; justify-content: center">
+<label><input type="checkbox" id="noSkins"><span data-itr="page_option_no_skins">No skins</span></label>
+<label><input type="checkbox" id="noNames"><span data-itr="page_option_no_names">No names</span></label>
+<label><input type="checkbox" id="noColors"><span data-itr="page_option_no_colors">No colors</span></label>
+<label><input type="checkbox" id="showMass"><span data-itr="page_option_show_mass">Show mass</span></label>
+<label><input type="checkbox" id="darkTheme"><span data-itr="page_option_dark_theme">Dark theme</span></label>
+<label><input type="checkbox" id="skipStats"><span data-itr="page_option_skip_stats">Skip stats</span></label>
+</div>
+<div id="tags-container">
+<span id="user-id-tag"></span>
+<span id="version-tag">( - 2.2.5.786 - (CFG: 242))</span>
+</div>
+</div>
             
             <select id="gamemode" onchange="if($(this).val()=='regular'){window.location.href='http://GLSG.ddns.net'}else{window.location.href='http://GLSGBots.com'}" required="">
                 <option value="regular">Regular</option>
