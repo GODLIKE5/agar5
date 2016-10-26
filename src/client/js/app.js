@@ -1,990 +1,950 @@
-var io = require('socket.io-client');
+(function() {
+  var Ball, Game, Grid, JoinPacket, JsonPacket, Network, Packet, PlayerUpdatePacket, SetElementsPacket, StartPacket, StatsPacket, TargetPacket, UpdateElementsPacket, extend, stringToUint, uintToString,
+    extend1 = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
 
-var playerName;
-var playerType;
-var playerNameInput = document.getElementById('playerNameInput');
-var socket;
-var reason;
-var KEY_ESC = 27;
-var KEY_ENTER = 13;
-var KEY_CHAT = 13;
-var KEY_FIREFOOD = 119;
-var KEY_SPLIT = 32;
-var KEY_LEFT = 37;
-var KEY_UP = 38;
-var KEY_RIGHT = 39;
-var KEY_DOWN = 40;
-var borderDraw = true;
-var animLoopHandle;
-var spin = -Math.PI;
-var enemySpin = -Math.PI;
-var mobile = false;
-var foodSides = 6;
-var virusSides = 0;
-var pattern;
-var cell_bg;
-
-var img = new Image();
-img.onload = function(){};
-img.src = "http://agar.io/skins/doge.png";
-
-function backgroundimg(size,url){
-    var w = size;
-    var h = size;
-    
-    graph.save(); // Save the context before clipping
-    graph.clip(); // Clip to whatever path is on the context
-    var imgHeight = w / img.width * img.height;
-    if (imgHeight < h){
-        graph.fillStyle = '#000';
-        graph.fill();
+  extend = function(object, properties) {
+    var key, val;
+    for (key in properties) {
+      val = properties[key];
+      object[key] = val;
     }
-    graph.drawImage(img,0,0,w,imgHeight);
-    graph.restore(); // Get rid of the clipping region
-    
-    //cell_bg = new Image();
-    //cell_bg.src = 'https://images1-focus-opensocial.googleusercontent.com/gadgets/proxy?url='+url+'&container=focus&resize_w='+size+'&resize_h='+size; 
-    //cell_bg.onload = function(){
-    //    pattern = graph.createPattern(this, "repeat");
-    //};
-}
+    return object;
+  };
 
-if(window.location.host.split('.')[0] == 'agar5'){
-    document.getElementById("gamemode").selectedIndex = 0;
-} else {
-    document.getElementById("gamemode").selectedIndex = 1;
-}
-
-var debug = function(args) {
-    if (console && console.log) {
-        console.log(args);
+  stringToUint = function(string) {
+    var c, charList, k, len, uintArray;
+    string = unescape(encodeURIComponent(string));
+    charList = string.split('');
+    uintArray = [];
+    for (k = 0, len = charList.length; k < len; k++) {
+      c = charList[k];
+      uintArray.push(c.charCodeAt(0));
     }
-};
+    return uintArray;
+  };
 
-if ( /Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent) ) {
-    mobile = true;
-}
+  uintToString = function(uintArray) {
+    var encodedString;
+    encodedString = String.fromCharCode.apply(null, uintArray);
+    return decodeURIComponent(escape(encodedString));
+  };
 
-function startGame(type) {
-    playerName = playerNameInput.value.replace(/(<([^>]+)>)/ig, '').substring(0,25);
-    if(window.location.host.split('.')[0] == 'GLSG'){
-        playerName = playerName + ' ('+$('#userid').text()+')';
+  Packet = (function() {
+    function Packet(id1) {
+      this.id = id1;
     }
-    playerType = type;
 
-    screenWidth = window.innerWidth;
-    screenHeight = window.innerHeight;
+    Packet.prototype.parseData = function(data) {};
 
-    document.getElementById('startMenuWrapper').style.maxHeight = '0px';
-    document.getElementById('gameAreaWrapper').style.opacity = 1;
-    if (!socket) {
-        socket = io({query:"type=" + type});
-        setupSocket(socket);
-    }
-    if (!animLoopHandle)
-        animloop();
-    socket.emit('respawn');
-}
-
-// Checks if the nick chosen contains valid alphanumeric characters (and underscores).
-//function validNick() {
-//    var regex = /^\w*$/;
-//    debug('Regex Test', regex.exec(playerNameInput.value));
-//    return regex.exec(playerNameInput.value) !== null;
-//}
-
-window.onload = function() {
-
-    var btn = document.getElementById('startButton'),
-        nickErrorText = document.querySelector('#startMenu .input-error');
-
-    btn.onclick = function () {
-
-        // Checks if the nick is valid.
-        //if (validNick()) {
-        //    nickErrorText.style.opacity = 0;
-            startGame('player');
-        //} else {
-        //    nickErrorText.style.opacity = 1;
-        //}
+    Packet.prototype.getData = function() {
+      var ar, dv;
+      ar = new ArrayBuffer(1);
+      dv = new DataView(ar);
+      dv.setUint8(0, this.id);
+      return ar;
     };
 
-    var settingsMenu = document.getElementById('settingsButton');
-    var settings = document.getElementById('settings');
-    var instructions = document.getElementById('instructions');
+    return Packet;
 
-    settingsMenu.onclick = function () {
-        if (settings.style.maxHeight == '300px') {
-            settings.style.maxHeight = '0px';
+  })();
+
+  JoinPacket = (function(superClass) {
+    extend1(JoinPacket, superClass);
+
+    function JoinPacket(lobby) {
+      this.lobby = lobby;
+      JoinPacket.__super__.constructor.call(this, 0x10);
+    }
+
+    JoinPacket.prototype.getData = function() {
+      var ar, dv;
+      ar = new ArrayBuffer(1 + 4);
+      dv = new DataView(ar);
+      dv.setUint8(0, this.id);
+      dv.setUint32(1, this.lobby, true);
+      return ar;
+    };
+
+    return JoinPacket;
+
+  })(Packet);
+
+  StartPacket = (function(superClass) {
+    extend1(StartPacket, superClass);
+
+    function StartPacket(name1) {
+      this.name = name1;
+      StartPacket.__super__.constructor.call(this, 0x12);
+    }
+
+    StartPacket.prototype.getData = function() {
+      var ar, strbuf;
+      strbuf = stringToUint(this.name);
+      ar = new Uint8Array(1 + strbuf.length);
+      ar.set([this.id], 0);
+      ar.set(strbuf, 1);
+      return ar.buffer;
+    };
+
+    return StartPacket;
+
+  })(Packet);
+
+  TargetPacket = (function(superClass) {
+    extend1(TargetPacket, superClass);
+
+    function TargetPacket(x1, y1) {
+      this.x = x1;
+      this.y = y1;
+      TargetPacket.__super__.constructor.call(this, 0x20);
+    }
+
+    TargetPacket.prototype.getData = function() {
+      var ar, dv;
+      ar = new ArrayBuffer(1 + 8 + 8);
+      dv = new DataView(ar);
+      dv.setUint8(0, this.id);
+      dv.setFloat64(1, this.x, true);
+      dv.setFloat64(9, this.y, true);
+      return ar;
+    };
+
+    return TargetPacket;
+
+  })(Packet);
+
+  PlayerUpdatePacket = (function(superClass) {
+    extend1(PlayerUpdatePacket, superClass);
+
+    function PlayerUpdatePacket() {
+      PlayerUpdatePacket.__super__.constructor.call(this, 0x24);
+    }
+
+    PlayerUpdatePacket.prototype.parseData = function(data) {
+      var pos, results;
+      this.mass = data.getUint32(1, true);
+      this.balls = [];
+      pos = 5;
+      results = [];
+      while (pos < data.byteLength) {
+        this.balls.push(data.getUint32(pos, true));
+        results.push(pos += 4);
+      }
+      return results;
+    };
+
+    return PlayerUpdatePacket;
+
+  })(Packet);
+
+  SetElementsPacket = (function(superClass) {
+    extend1(SetElementsPacket, superClass);
+
+    function SetElementsPacket() {
+      SetElementsPacket.__super__.constructor.call(this, 0x30);
+    }
+
+    SetElementsPacket.prototype.parseData = function(data) {
+      var e, pos, ref, results;
+      this.elements = [];
+      pos = 1;
+      results = [];
+      while (pos < data.byteLength) {
+        ref = Network.parseElementData(data, pos), pos = ref[0], e = ref[1];
+        results.push(this.elements.push(e));
+      }
+      return results;
+    };
+
+    return SetElementsPacket;
+
+  })(Packet);
+
+  UpdateElementsPacket = (function(superClass) {
+    extend1(UpdateElementsPacket, superClass);
+
+    function UpdateElementsPacket() {
+      UpdateElementsPacket.__super__.constructor.call(this, 0x31);
+    }
+
+    UpdateElementsPacket.prototype.parseData = function(data) {
+      var count, e, k, l, pos, ref, ref1, ref2, ref3, results;
+      this.newElements = [];
+      this.deletedElements = [];
+      this.updateElements = [];
+      count = data.getUint16(1, true);
+      pos = 3;
+      for (k = 0, ref = count; 0 <= ref ? k < ref : k > ref; 0 <= ref ? k++ : k--) {
+        ref1 = Network.parseElementData(data, pos), pos = ref1[0], e = ref1[1];
+        this.newElements.push(e);
+      }
+      count = data.getUint16(pos, true);
+      pos += 2;
+      for (l = 0, ref2 = count; 0 <= ref2 ? l < ref2 : l > ref2; 0 <= ref2 ? l++ : l--) {
+        this.deletedElements.push(data.getUint32(pos, true));
+        pos += 4;
+      }
+      results = [];
+      while (pos < data.byteLength) {
+        ref3 = Network.parseElementUpdateData(data, pos), pos = ref3[0], e = ref3[1];
+        results.push(this.updateElements.push(e));
+      }
+      return results;
+    };
+
+    return UpdateElementsPacket;
+
+  })(Packet);
+
+  StatsPacket = (function(superClass) {
+    extend1(StatsPacket, superClass);
+
+    function StatsPacket() {
+      StatsPacket.__super__.constructor.call(this, 0xF0);
+    }
+
+    StatsPacket.prototype.parseData = function(data) {
+      this.update = data.getFloat64(1, true);
+      this.collision = data.getFloat64(1 + 8, true);
+      this.other = data.getFloat64(1 + 8 + 8, true);
+      this.elementCount = data.getUint32(1 + 8 + 8 + 8, true);
+      return this.playerCount = data.getUint32(1 + 8 + 8 + 8 + 4, true);
+    };
+
+    return StatsPacket;
+
+  })(Packet);
+
+  JsonPacket = (function(superClass) {
+    extend1(JsonPacket, superClass);
+
+    function JsonPacket(id1, data1) {
+      this.id = id1;
+      this.data = data1;
+      JsonPacket.__super__.constructor.call(this, this.id);
+    }
+
+    JsonPacket.prototype.getData = function() {
+      var ar, strbuf;
+      console.log("JsonData", this.id, this.data);
+      if (this.data) {
+        strbuf = stringToUint(JSON.stringify(this.data));
+        ar = new Uint8Array(1 + strbuf.length);
+        ar.set([this.id], 0);
+        ar.set(strbuf, 1);
+        return ar.buffer;
+      } else {
+        return JsonPacket.__super__.getData.call(this);
+      }
+    };
+
+    JsonPacket.prototype.parseData = function(data) {
+      var pos, ref, str;
+      ref = Network.parseString(data, 1), pos = ref[0], str = ref[1];
+      return this.data = JSON.parse(str);
+    };
+
+    return JsonPacket;
+
+  })(Packet);
+
+  Network = (function() {
+    Network.Packets = {
+      Join: 0x10,
+      0x10: Packet.bind(void 0, 0x10),
+      Leave: 0x11,
+      0x11: Packet.bind(void 0, 0x11),
+      Start: 0x12,
+      0x12: StartPacket.bind(void 0),
+      GetLobby: 0x13,
+      0x13: JsonPacket.bind(void 0, 0x13),
+      UpdateTarget: 0x20,
+      0x20: TargetPacket,
+      SplitUp: 0x21,
+      0x21: Packet.bind(void 0, 0x21),
+      Shoot: 0x22,
+      0x22: Packet.bind(void 0, 0x22),
+      RIP: 0x23,
+      0x23: Packet.bind(void 0, 0x23),
+      PlayerUpdate: 0x24,
+      0x24: PlayerUpdatePacket,
+      SetElements: 0x30,
+      0x30: SetElementsPacket,
+      UpdateElements: 0x31,
+      0x31: UpdateElementsPacket,
+      GetStats: 0xF0,
+      0xF0: StatsPacket
+    };
+
+    function Network(uri) {
+      this.callbacks = {};
+      this.ws = new WebSocket(uri);
+      this.ws.binaryType = "arraybuffer";
+      this.ws.onopen = (function(_this) {
+        return function() {
+          if (_this.onConnect) {
+            return _this.onConnect();
+          }
+        };
+      })(this);
+      this.ws.onclose = (function(_this) {
+        return function() {
+          if (_this.onDisconnect) {
+            return _this.onDisconnect();
+          }
+        };
+      })(this);
+      this.ws.onerror = (function(_this) {
+        return function(err) {
+          return console.err("Error:", err);
+        };
+      })(this);
+      this.ws.onmessage = (function(_this) {
+        return function(e) {
+          var packet;
+          packet = _this.decode(e.data);
+          return _this.callbacks[packet.id](packet);
+        };
+      })(this);
+    }
+
+    Network.prototype.onConnect = function(onConnect) {
+      this.onConnect = onConnect;
+    };
+
+    Network.prototype.onDisconnect = function(onDisconnect) {
+      this.onDisconnect = onDisconnect;
+    };
+
+    Network.prototype.on = function(id, func) {
+      return this.callbacks[id] = func;
+    };
+
+    Network.prototype.emit = function(packet) {
+      if (typeof packet === "number") {
+        packet = new Network.Packets[packet]();
+      }
+      return this.ws.send(packet.getData());
+    };
+
+    Network.prototype.decode = function(data) {
+      var dv, err, pack;
+      dv = new DataView(data);
+      try {
+        pack = new Network.Packets[dv.getUint8(0)]();
+        pack.parseData(dv);
+        return pack;
+      } catch (_error) {
+        err = _error;
+        return console.error("Packet decode error", dv.getUint8(0), err);
+      }
+    };
+
+    Network.parseString = function(dv, pos) {
+      var c, str;
+      str = [];
+      while (true) {
+        c = dv.getUint8(pos);
+        pos++;
+        if (c === 0) {
+          break;
+        }
+        str.push(c);
+      }
+      return [pos, uintToString(str)];
+    };
+
+    Network.parseElementData = function(dv, pos) {
+      var ref, ref1, res;
+      res = {};
+      res.id = dv.getUint32(pos, true);
+      pos += 4;
+      res.type = dv.getUint8(pos);
+      pos += 1;
+      ref = Network.parseString(dv, pos), pos = ref[0], res.color = ref[1];
+      ref1 = Network.parseString(dv, pos), pos = ref1[0], res.name = ref1[1];
+      res.x = dv.getFloat64(pos, true);
+      pos += 8;
+      res.y = dv.getFloat64(pos, true);
+      pos += 8;
+      res.size = dv.getFloat64(pos, true);
+      pos += 8;
+      return [pos, res];
+    };
+
+    Network.parseElementUpdateData = function(dv, pos) {
+      var res;
+      res = {};
+      res.id = dv.getUint32(pos, true);
+      pos += 4;
+      res.x = dv.getFloat64(pos, true);
+      pos += 8;
+      res.y = dv.getFloat64(pos, true);
+      pos += 8;
+      res.size = dv.getFloat64(pos, true);
+      pos += 8;
+      res.velX = dv.getFloat64(pos, true);
+      pos += 8;
+      res.velY = dv.getFloat64(pos, true);
+      pos += 8;
+      return [pos, res];
+    };
+
+    return Network;
+
+  })();
+
+  Ball = (function() {
+    function Ball(options1, data) {
+      this.options = options1;
+      extend(this, data);
+    }
+
+    Ball.prototype.updateData = function(data) {
+      return extend(this, data);
+    };
+
+    Ball.prototype.update = function(t) {
+      if (this.velX) {
+        this.x += this.velX * t;
+      }
+      if (this.velY) {
+        return this.y += this.velY * t;
+      }
+    };
+
+    Ball.prototype.render = function(graph) {
+      var fontSize;
+      graph.beginPath();
+      graph.strokeStyle = this.options.borderColor;
+      graph.fillStyle = this.color || this.options.fillColor;
+      graph.lineWidth = this.options.border;
+      graph.arc(this.x, this.y, this.size, 0, 2 * Math.PI);
+      graph.stroke();
+      graph.fill();
+      if (this.name && this.name !== "") {
+        fontSize = Math.max(this.size / 2, this.options.defaultSize);
+        graph.lineWidth = this.options.textBorderSize;
+        graph.textAlign = "center";
+        graph.fillStyle = this.options.textColor;
+        graph.textBaseline = 'middle';
+        graph.strokeStyle = this.options.textBorder;
+        graph.font = "bold " + fontSize + "px sans-serif";
+        graph.strokeText(this.name, this.x, this.y);
+        return graph.fillText(this.name, this.x, this.y);
+      }
+    };
+
+    return Ball;
+
+  })();
+
+  Grid = (function() {
+    function Grid(game, options1) {
+      this.game = game;
+      this.options = options1;
+    }
+
+    Grid.prototype.render = function(graph) {
+      var k, l, ref, ref1, ref2, ref3, x, y;
+      graph.beginPath();
+      graph.lineWidth = 1;
+      graph.strokeStyle = this.options.lineColor;
+      for (x = k = 0, ref = this.game.gamefield.width, ref1 = this.options.size; ref1 > 0 ? k <= ref : k >= ref; x = k += ref1) {
+        graph.moveTo(x, 0);
+        graph.lineTo(x, this.game.gamefield.height);
+      }
+      for (y = l = 0, ref2 = this.game.gamefield.height, ref3 = this.options.size; ref3 > 0 ? l <= ref2 : l >= ref2; y = l += ref3) {
+        graph.moveTo(0, y);
+        graph.lineTo(this.game.gamefield.width, y);
+      }
+      graph.stroke();
+      graph.beginPath();
+      graph.lineWidth = this.options.borderSize;
+      graph.strokeStyle = this.options.borderColor;
+      graph.moveTo(0, 0);
+      graph.lineTo(0, this.game.gamefield.height);
+      graph.lineTo(this.game.gamefield.width, this.game.gamefield.height);
+      graph.lineTo(this.game.gamefield.width, 0);
+      graph.lineTo(0, 0);
+      return graph.stroke();
+    };
+
+
+    /*	px = @game.player.x % @options.size
+    		py = @game.player.y % @options.size
+    
+    		graph.beginPath()
+    		graph.lineWidth = 1
+    		graph.strokeStyle = @options.lineColor
+    		for(x = 0 x <= view.width x += @options.size) {
+    			graph.moveTo(0 + x - px, 0)
+    			graph.lineTo(0 + x - px, view.height)
+    		}
+    		for(y = 0 y <= view.height y += @options.size) {
+    			graph.moveTo(0, 0 + y - py)
+    			graph.lineTo(view.width, 0 + y - py)
+    		}
+    		graph.stroke()
+    
+    		graph.beginPath()
+    		graph.lineWidth = @options.borderSize
+    		graph.strokeStyle = @options.borderColor
+    		graph.moveTo(view.width/2 - @game.player.x, 0)
+    		graph.lineTo(view.width/2 - @game.player.x, view.height)
+    
+    		graph.moveTo(view.width/2 - @game.player.x + gamefieldSize, 0)
+    		graph.lineTo(view.width/2 - @game.player.x + gamefieldSize, view.height)
+    
+    		graph.moveTo(0, view.height/2 - @game.player.y + gamefieldSize)
+    		graph.lineTo(view.width, view.height/2 - @game.player.y + gamefieldSize)
+    
+    		graph.moveTo(0, view.height/2 - @game.player.y)
+    		graph.lineTo(view.width, view.height/2 - @game.player.y)
+    
+    		graph.stroke()
+     */
+
+    return Grid;
+
+  })();
+
+  Game = (function() {
+    Game.prototype.net = new Network("ws://" + window.location.host + "/websocket/");
+
+    Game.prototype.screen = {
+      width: window.innerWidth,
+      height: window.innerHeight
+    };
+
+    Game.prototype.view = {
+      width: window.innerWidth,
+      height: window.innerHeight
+    };
+
+    Game.prototype.gameStarted = false;
+
+    Game.prototype.inRoom = false;
+
+    Game.ElementTypes = {
+      0: "ball",
+      1: "food",
+      2: "shoot",
+      3: "obstracle",
+      4: "item"
+    };
+
+    Game.defaultOptions = {
+      viewPortScaleFactor: 0.01,
+      backgroundColor: '#EEEEEE',
+      grid: {
+        lineColor: '#DADADA',
+        borderColor: '#A0A0A0',
+        borderSize: 5,
+        size: 50
+      },
+      food: {
+        border: 2,
+        borderColor: "#f39c12",
+        fillColor: "#f1c40f",
+        size: 5
+      },
+      obstracle: {
+        border: 5,
+        borderColor: "#006600",
+        fillColor: "#00FF00"
+      },
+      shoot: {
+        border: 2,
+        borderColor: "#f39c12",
+        fillColor: "#FF0000"
+      },
+      player: {
+        border: 5,
+        borderColor: "#FFFFCC",
+        fillColor: "#ea6153",
+        textColor: "#FFFFFF",
+        textBorder: "#000000",
+        textBorderSize: 3,
+        defaultSize: 10
+      },
+      ball: {
+        border: 5,
+        borderColor: "#CC0000",
+        fillColor: "#c0392b",
+        textColor: "#FFFFFF",
+        textBorder: "#000000",
+        textBorderSize: 3,
+        defaultSize: 10
+      },
+      item: {
+        border: 5,
+        borderColor: "#6666FF",
+        fillColor: "#0000FF"
+      }
+    };
+
+    Game.prototype.player = {
+      x: 0,
+      y: 0,
+      size: 0,
+      mass: 0,
+      balls: {}
+    };
+
+    Game.prototype.elements = {};
+
+    Game.prototype.target = {
+      x: 0,
+      y: 0,
+      changed: false
+    };
+
+    Game.prototype.fps = 0;
+
+    Game.prototype.fpstimer = 0;
+
+    Game.prototype.lastTick = 0;
+
+    Game.prototype.name = "NoName";
+
+    Game.prototype.rooms = {};
+
+    function Game(options) {
+      this.options = extend(extend({}, Game.defaultOptions), options);
+      this.grid = new Grid(this, this.options.grid);
+      this.init();
+      this.net.onConnect((function(_this) {
+        return function() {
+          console.log("Connected");
+          return _this.net.emit(Network.Packets.GetLobby);
+        };
+      })(this));
+      this.net.on(Network.Packets.GetLobby, (function(_this) {
+        return function(packet) {
+          var i, k, len, ref, ref1, room;
+          _this.rooms = {};
+          if (!_this.lastRoom) {
+            _this.lastRoom = packet.data[packet.data.length - 1].id;
+          }
+          ref = packet.data;
+          for (k = 0, len = ref.length; k < len; k++) {
+            room = ref[k];
+            _this.rooms[room.id] = room;
+          }
+          console.log("Rooms:", _this.rooms);
+          _this.roomsText.innerHTML = "";
+          ref1 = _this.rooms;
+          for (i in ref1) {
+            room = ref1[i];
+            _this.roomsText.innerHTML += "<option value=\"" + room.id + "\" " + (_this.lastRoom === room.id ? "selected=\"selected\"" : "") + ">" + room.name + " (" + room.playerCount + ")</option>";
+          }
+          return _this.join(_this.lastRoom);
+        };
+      })(this));
+      this.net.on(Network.Packets.Start, (function(_this) {
+        return function() {
+          console.log("Game Started");
+          return _this.gameStarted = true;
+        };
+      })(this));
+      this.net.on(Network.Packets.SetElements, (function(_this) {
+        return function(packet) {
+          var k, len, o, ref, results;
+          _this.elements = {};
+          ref = packet.elements;
+          results = [];
+          for (k = 0, len = ref.length; k < len; k++) {
+            o = ref[k];
+            _this.elements[o.id] = new Ball(_this.options[Game.ElementTypes[o.type]], o);
+            if (o.type === 0 && _this.player.balls.hasOwnProperty(o.id)) {
+              _this.elements[o.id].options = _this.options.player;
+              results.push(_this.player.balls[o.id] = _this.elements[o.id]);
+            } else {
+              results.push(void 0);
+            }
+          }
+          return results;
+        };
+      })(this));
+      this.net.on(Network.Packets.UpdateElements, (function(_this) {
+        return function(packet) {
+          var err, k, l, len, len1, len2, n, o, ref, ref1, ref2, results;
+          try {
+            ref = packet.newElements;
+            for (k = 0, len = ref.length; k < len; k++) {
+              o = ref[k];
+              _this.elements[o.id] = new Ball(_this.options[Game.ElementTypes[o.type]], o);
+              if (o.type === 0 && _this.player.balls.hasOwnProperty(o.id)) {
+                _this.elements[o.id].options = _this.options.player;
+                _this.player.balls[o.id] = _this.elements[o.id];
+              }
+            }
+          } catch (_error) {
+            err = _error;
+          }
+          try {
+            ref1 = packet.deletedElements;
+            for (l = 0, len1 = ref1.length; l < len1; l++) {
+              o = ref1[l];
+              delete _this.elements[o];
+            }
+          } catch (_error) {
+            err = _error;
+          }
+          try {
+            ref2 = packet.updateElements;
+            results = [];
+            for (n = 0, len2 = ref2.length; n < len2; n++) {
+              o = ref2[n];
+              results.push(_this.elements[o.id].updateData(o));
+            }
+            return results;
+          } catch (_error) {
+            err = _error;
+          }
+        };
+      })(this));
+      this.net.on(Network.Packets.PlayerUpdate, (function(_this) {
+        return function(packet) {
+          var b, k, len, ref;
+          _this.player.mass = packet.mass;
+          _this.player.balls = {};
+          ref = packet.balls;
+          for (k = 0, len = ref.length; k < len; k++) {
+            b = ref[k];
+            if (_this.elements.hasOwnProperty(b)) {
+              _this.player.balls[b] = _this.elements[b];
+              _this.elements[b].options = _this.options.player;
+            } else {
+              _this.player.balls[b] = null;
+            }
+          }
+          _this.massText.innerHTML = "Mass: " + _this.player.mass;
+          return _this.updatePlayer();
+        };
+      })(this));
+      this.net.on(Network.Packets.RIP, (function(_this) {
+        return function() {
+          console.log("You got killed");
+          _this.gameStarted = false;
+          return spawnbox.hidden = false;
+        };
+      })(this));
+      this.net.onDisconnect((function(_this) {
+        return function() {
+          console.log("Disconnected");
+          return _this.inRoom = false;
+        };
+      })(this));
+      this.net.on(Network.Packets.GetStats, (function(_this) {
+        return function(packet) {
+          return console.log("Stats", packet);
+        };
+      })(this));
+      this.loop();
+    }
+
+    Game.prototype.init = function() {
+      this.canvas = document.getElementById("cvs");
+      this.canvas.addEventListener("mousemove", (function(_this) {
+        return function(evt) {
+          _this.target.x = evt.clientX - _this.screen.width / 2;
+          _this.target.y = evt.clientY - _this.screen.height / 2;
+          return _this.target.changed = true;
+        };
+      })(this));
+      this.canvas.addEventListener("keypress", (function(_this) {
+        return function(evt) {
+          if (evt.charCode === 32) {
+            _this.net.emit(Network.Packets.SplitUp);
+          }
+          if (evt.charCode === 119) {
+            _this.net.emit(Network.Packets.Shoot);
+          }
+          if (evt.charCode === 100) {
+            return _this.getStats();
+          }
+        };
+      })(this));
+      this.canvas.width = this.screen.width;
+      this.canvas.height = this.screen.height;
+      window.addEventListener("resize", (function(_this) {
+        return function() {
+          _this.screen.width = window.innerWidth;
+          _this.screen.height = window.innerHeight;
+          _this.canvas.width = window.innerWidth;
+          return _this.canvas.height = window.innerHeight;
+        };
+      })(this));
+      this.graph = this.canvas.getContext("2d");
+      this.massText = document.getElementById("mass");
+      this.statusText = document.getElementById("status");
+      this.roomsText = document.getElementById("rooms");
+      this.nameText = document.getElementById("name");
+      return this.spawnbox = document.getElementById("spawnbox");
+    };
+
+    Game.prototype.join = function(index) {
+      console.log("Joining Room " + this.rooms[index].name);
+      this.gamefield = this.rooms[index].options;
+      if (this.inRoom && index !== this.lastRoom) {
+        this.net.emit(Network.Packets.Leave);
+        this.inRoom = false;
+        setTimeout(((function(_this) {
+          return function() {
+            return _this.join(index);
+          };
+        })(this)), 10);
+        return;
+      }
+      console.log("Connecting ...");
+      this.net.emit(new JoinPacket(index));
+      this.inRoom = true;
+      this.lastRoom = index;
+      return this.updatePlayer();
+    };
+
+    Game.prototype.start = function() {
+      console.log("Starting Game");
+      this.name = this.nameText.value;
+      this.net.emit(new StartPacket(this.name));
+      spawnbox.hidden = true;
+      return this.canvas.focus();
+    };
+
+    Game.prototype.loop = function() {
+      return window.requestAnimationFrame((function(_this) {
+        return function(now) {
+          var timediff;
+          timediff = now - _this.lastTick;
+          if (_this.inRoom) {
+            _this.update(timediff * 1e-3);
+            _this.render();
+          } else {
+            _this.statusText.innerHTML = "FPS: -";
+          }
+          _this.lastTick = now;
+          return _this.loop();
+        };
+      })(this));
+    };
+
+    Game.prototype.update = function(timediff) {
+      var i, m, ref;
+      ref = this.elements;
+      for (i in ref) {
+        m = ref[i];
+        m.update(timediff);
+      }
+      if (this.gameStarted) {
+        this.updatePlayer();
+        if (this.target.changed) {
+          this.net.emit(new TargetPacket(this.target.x, this.target.y));
+          this.target.changed = false;
+        }
+      }
+      this.fpstimer += timediff;
+      this.fps++;
+      if (this.fpstimer >= 1) {
+        this.statusText.innerHTML = "FPS:" + this.fps;
+        this.fps = 0;
+        return this.fpstimer = 0;
+      }
+    };
+
+    Game.prototype.updatePlayer = function() {
+      var b, i, j, ref;
+      if (this.gameStarted) {
+        this.player.x = this.player.y = this.player.size = 0;
+        i = 0;
+        ref = this.player.balls;
+        for (j in ref) {
+          b = ref[j];
+          if (!(b !== null)) {
+            continue;
+          }
+          this.player.x += b.x * b.size;
+          this.player.y += b.y * b.size;
+          this.player.size += b.size;
+          i++;
+        }
+        if (i > 0) {
+          this.player.x /= this.player.size;
+          this.player.y /= this.player.size;
+          return this.player.size /= i;
+        }
+      } else {
+        this.player.x = this.gamefield.width / 2;
+        this.player.y = this.gamefield.height / 2;
+        return this.player.size = Math.log(Math.min(this.gamefield.width - this.screen.width, this.gamefield.height - this.screen.height)) / this.options.viewPortScaleFactor / 2;
+      }
+    };
+
+    Game.prototype.render = function() {
+      var i, m, ref, results, scale, viewPort;
+      scale = 1 / (this.options.viewPortScaleFactor * this.player.size + 1);
+      this.graph.setTransform(scale, 0, 0, scale, this.screen.width / 2 - this.player.x * scale, this.screen.height / 2 - this.player.y * scale);
+      viewPort = {
+        left: this.player.x - this.screen.width / 2 / scale,
+        top: this.player.y - this.screen.height / 2 / scale,
+        right: this.player.x + this.screen.width / 2 / scale,
+        botom: this.player.y + this.screen.height / 2 / scale
+      };
+      this.graph.fillStyle = this.options.backgroundColor;
+      this.graph.fillRect(viewPort.left, viewPort.top, this.screen.width / scale, this.screen.height / scale);
+      this.grid.render(this.graph);
+      ref = this.elements;
+      results = [];
+      for (i in ref) {
+        m = ref[i];
+        if (m.x + m.size > viewPort.left && m.y + m.size > viewPort.top && m.x - m.size < viewPort.right && m.y - m.size < viewPort.botom) {
+          results.push(m.render(this.graph));
         } else {
-            settings.style.maxHeight = '300px';
+          results.push(void 0);
         }
+      }
+      return results;
     };
 
-    playerNameInput.addEventListener('keypress', function (e) {
-        var key = e.which || e.keyCode;
-
-        if (key === KEY_ENTER) {
-            //if (validNick()) {
-            //    nickErrorText.style.opacity = 0;
-                startGame('player');
-            //} else {
-            //    nickErrorText.style.opacity = 1;
-            //}
-        }
-    });
-};
-
-// Canvas.
-var screenWidth = window.innerWidth;
-var screenHeight = window.innerHeight;
-var gameWidth = 0;
-var gameHeight = 0;
-var xoffset = -gameWidth;
-var yoffset = -gameHeight;
-
-var gameStart = false;
-var disconnected = false;
-var died = false;
-var kicked = false;
-
-// TODO: Break out into GameControls.
-var continuity = true;
-var startPingTime = 0;
-var toggleMassState = 1;
-var backgroundColor = '#f2fbff';
-var lineColor = '#000000';
-
-var foodConfig = {
-    border: 0,
-};
-
-var playerConfig = {
-    border: 6,
-    textColor: '#FFFFFF',
-    textBorder: '#000000',
-    textBorderSize: 3,
-    defaultSize: 30
-};
-
-var player = {
-    id: -1,
-    x: screenWidth / 2,
-    y: screenHeight / 2,
-    screenWidth: screenWidth,
-    screenHeight: screenHeight,
-    target: {x: screenWidth / 2, y: screenHeight / 2}
-};
-
-var foods = [];
-var viruses = [];
-var fireFood = [];
-var users = [];
-var leaderboard = [];
-var target = {x: player.x, y: player.y};
-var reenviar = true;
-var directionLock = false;
-var directions = [];
-
-var c = document.getElementById('cvs');
-c.width = screenWidth; c.height = screenHeight;
-c.addEventListener('mousemove', gameInput, false);
-c.addEventListener('mouseout', outOfBounds, false);
-c.addEventListener('keypress', keyInput, false);
-c.addEventListener('keyup', function(event) {reenviar = true; directionUp(event);}, false);
-c.addEventListener('keydown', directionDown, false);
-c.addEventListener('touchstart', touchInput, false);
-c.addEventListener('touchmove', touchInput, false);
-
-// Register when the mouse goes off the canvas.
-function outOfBounds() {
-    if (!continuity) {
-        target = { x : 0, y: 0 };
-    }
-}
-
-var visibleBorderSetting = document.getElementById('visBord');
-visibleBorderSetting.onchange = toggleBorder;
-
-var showMassSetting = document.getElementById('showMass');
-showMassSetting.onchange = toggleMass;
-
-var continuitySetting = document.getElementById('continuity');
-continuitySetting.onchange = toggleContinuity;
-
-var continuitySetting = document.getElementById('roundFood');
-continuitySetting.onchange = toggleRoundFood;
-
-var graph = c.getContext('2d');
-
-function ChatClient(config) {
-    this.commands = {};
-    var input = document.getElementById('chatInput');
-    input.addEventListener('keypress', this.sendChat.bind(this));
-    input.addEventListener('keyup', function(key) {
-        input = document.getElementById('chatInput');
-
-        key = key.which || key.keyCode;
-        if (key === KEY_ESC) {
-            input.value = '';
-            c.focus();
-        }
-    });
-}
-
-// Chat box implementation for the users.
-ChatClient.prototype.addChatLine = function (name, message, me) {
-    if (mobile) {
-        return;
-    }
-    var newline = document.createElement('li');
-
-    // Colours the chat input correctly.
-    newline.className = (me) ? 'me' : 'friend';
-    newline.innerHTML = '<b>' + ((name.length < 1) ? 'An unnamed cell' : name) + '</b>: ' + message;
-
-    this.appendMessage(newline);
-};
-
-
-// Chat box implementation for the system.
-ChatClient.prototype.addSystemLine = function (message) {
-    if (mobile) {
-        return;
-    }
-    var newline = document.createElement('li');
-
-    // Colours the chat input correctly.
-    newline.className = 'system';
-    newline.innerHTML = message;
-
-    // Append messages to the logs.
-    this.appendMessage(newline);
-};
-
-// Places the message DOM node into the chat box.
-ChatClient.prototype.appendMessage = function (node) {
-    if (mobile) {
-        return;
-    }
-    var chatList = document.getElementById('chatList');
-    if (chatList.childNodes.length > 10) {
-        chatList.removeChild(chatList.childNodes[0]);
-    }
-    chatList.appendChild(node);
-};
-
-// Sends a message or executes a command on the click of enter.
-ChatClient.prototype.sendChat = function (key) {
-    var commands = this.commands,
-        input = document.getElementById('chatInput');
-
-    key = key.which || key.keyCode;
-
-    if (key === KEY_ENTER) {
-        var text = input.value.replace(/(<([^>]+)>)/ig,'');
-        if (text !== '') {
-
-            // Chat command.
-            if (text.indexOf('-') === 0) {
-                var args = text.substring(1).split(' ');
-                if (commands[args[0]]) {
-                    commands[args[0]].callback(args.slice(1));
-                } else {
-                    this.addSystemLine('Unrecognized Command: ' + text + ', type -help for more info.');
-                }
-
-            // Allows for regular messages to be sent to the server.
-            } else {
-                socket.emit('playerChat', { sender: player.name, message: text });
-                this.addChatLine(player.name, text, true);
-                responsiveVoice.speak(text, "UK English Male", {pitch: 1});
-            }
-
-            // Resets input.
-            input.value = '';
-            c.focus();
-        }
-    }
-};
-
-// Allows for addition of commands.
-ChatClient.prototype.registerCommand = function (name, description, callback) {
-    this.commands[name] = {
-        description: description,
-        callback: callback
-    };
-};
-
-// Allows help to print the list of all the commands and their descriptions.
-ChatClient.prototype.printHelp = function () {
-    var commands = this.commands;
-    for (var cmd in commands) {
-        if (commands.hasOwnProperty(cmd)) {
-            this.addSystemLine('-' + cmd + ': ' + commands[cmd].description);
-        }
-    }
-};
-
-var chat = new ChatClient();
-
-// Chat command callback functions.
-function keyInput(event) {
-	var key = event.which || event.keyCode;
-	if (key === KEY_FIREFOOD && reenviar) {
-        socket.emit('1');
-        reenviar = false;
-    }
-    else if (key === KEY_SPLIT && reenviar) {
-        socket.emit('2');
-        reenviar = false;
-    }
-    else if (key === KEY_CHAT) {
-        document.getElementById('chatInput').focus();
-    }
-}
-
-    $( "#feed" ).click(function() {
-        socket.emit('1');
-        reenviar = false;
-});
-
-    $( "#split" ).click(function() {
-        socket.emit('2');
-        reenviar = false;
-});
-
-// Function called when a key is pressed, will change direction if arrow key.
-function directionDown(event) {
-	var key = event.which || event.keyCode;
-
-	if (directional(key)) {
-		directionLock = true;
-		if (newDirection(key,directions, true)) {
-			updateTarget(directions);
-			socket.emit('0', target);
-		}
-	}
-}
-
-// Function called when a key is lifted, will change direction if arrow key.
-function directionUp(event) {
-	var key = event.which || event.keyCode;
-	if (directional(key)) {
-		if (newDirection(key,directions, false)) {
-			updateTarget(directions);
-			if (directions.length === 0) directionLock = false;
-			socket.emit('0', target);
-		}
-	}
-}
-
-// Updates the direction array including information about the new direction.
-function newDirection(direction, list, isAddition) {
-	var result = false;
-	var found = false;
-	for (var i = 0, len = list.length; i < len; i++) {
-		if (list[i] == direction) {
-			found = true;
-			if (!isAddition) {
-				result = true;
-				// Removes the direction.
-				list.splice(i, 1);
-			}
-			break;
-		}
-	}
-	// Adds the direction.
-	if (isAddition && found === false) {
-		result = true;
-		list.push(direction);
-	}
-
-	return result;
-}
-
-// Updates the target according to the directions in the directions array.
-function updateTarget(list) {
-	target = { x : 0, y: 0 };
-	var directionHorizontal = 0;
-	var directionVertical = 0;
-	for (var i = 0, len = list.length; i < len; i++) {
-		if (directionHorizontal === 0) {
-			if (list[i] == KEY_LEFT) directionHorizontal -= Number.MAX_VALUE;
-			else if (list[i] == KEY_RIGHT) directionHorizontal += Number.MAX_VALUE;
-		}
-		if (directionVertical === 0) {
-			if (list[i] == KEY_UP) directionVertical -= Number.MAX_VALUE;
-			else if (list[i] == KEY_DOWN) directionVertical += Number.MAX_VALUE;
-		}
-	}
-	target.x += directionHorizontal;
-	target.y += directionVertical;
-}
-
-function directional(key) {
-	return horizontal(key) || vertical(key);
-}
-
-function horizontal(key) {
-	return key == KEY_LEFT || key == KEY_RIGHT;
-}
-
-function vertical(key) {
-	return key == KEY_DOWN || key == KEY_UP;
-}
-function checkLatency() {
-    // Ping.
-    //startPingTime = Date.now();
-    //socket.emit('ping');
-}
-
-function toggleDarkMode() {
-    var LIGHT = '#f2fbff',
-        DARK = '#181818';
-    var LINELIGHT = '#000000',
-        LINEDARK = '#ffffff';
-
-    if (backgroundColor === LIGHT) {
-        backgroundColor = DARK;
-        lineColor = LINEDARK;
-        chat.addSystemLine('Dark mode enabled.');
-    } else {
-        backgroundColor = LIGHT;
-        lineColor = LINELIGHT;
-        chat.addSystemLine('Dark mode disabled.');
-    }
-}
-
-function toggleBorder() {
-    if (!borderDraw) {
-        borderDraw = true;
-        chat.addSystemLine('Showing border.');
-    } else {
-        borderDraw = false;
-        chat.addSystemLine('Hiding border.');
-    }
-}
-
-function toggleMass() {
-    if (toggleMassState === 0) {
-        toggleMassState = 1;
-        chat.addSystemLine('Viewing mass enabled.');
-    } else {
-        toggleMassState = 0;
-        chat.addSystemLine('Viewing mass disabled.');
-    }
-}
-
-function toggleContinuity() {
-    if (!continuity) {
-        continuity = true;
-        chat.addSystemLine('Continuity enabled.');
-    } else {
-        continuity = false;
-        chat.addSystemLine('Continuity disabled.');
-    }
-}
-
-function toggleRoundFood(args) {
-    if (args || foodSides < 10) {
-        foodSides = (args && !isNaN(args[0]) && +args[0] >= 3) ? +args[0] : 10;
-        chat.addSystemLine('Food is now rounded!');
-    } else {
-        foodSides = 5;
-        chat.addSystemLine('Food is no longer rounded!');
-    }
-}
-
-// TODO: Break out many of these GameControls into separate classes.
-
-chat.registerCommand('help', 'Information about the chat commands.', function () {
-    chat.printHelp();
-});
-
-chat.registerCommand('dark', 'Toggle dark mode.', function () {
-    toggleDarkMode();
-});
-
-chat.registerCommand('login', 'Login as an admin.', function (args) {
-    socket.emit('pass', args);
-});
-
-chat.registerCommand('kick', '[ADMIN] Kick a player, for admins only.', function (args) {
-    socket.emit('kick', args);
-});
-
-chat.registerCommand('addmass', '[ADMIN] - Add mass, for admins only.', function (args) {
-    socket.emit('addmass', args);
-});
-
-
-// socket stuff.
-function setupSocket(socket) {
-    // Handle ping.
-    socket.on('pong', function () {
-        //var latency = Date.now() - startPingTime;
-        //debug('Latency: ' + latency + 'ms');
-        //chat.addSystemLine('Ping: ' + latency + 'ms');
-    });
-
-    // Handle error.
-    socket.on('connect_failed', function () {
-        socket.close();
-        disconnected = true;
-    });
-
-    socket.on('disconnect', function () {
-        socket.close();
-        disconnected = true;
-    });
-
-    // Handle connection.
-    socket.on('welcome', function (playerSettings) {
-        player = playerSettings;
-        player.name = playerName;
-        player.screenWidth = screenWidth;
-        player.screenHeight = screenHeight;
-        player.target = target;
-        socket.emit('gotit', player);
-        gameStart = true;
-        debug('Game started at: ' + gameStart);
-        chat.addSystemLine('Connected to the game!');
-        chat.addSystemLine('Type <b>-help</b> for a list of commands.');
-        if (mobile) {
-            document.getElementById('gameAreaWrapper').removeChild(document.getElementById('chatbox'));
-        }
-		c.focus();
-    });
-
-    socket.on('gameSetup', function(data) {
-        gameWidth = data.gameWidth;
-        gameHeight = data.gameHeight;
-        resize();
-    });
-
-    socket.on('playerDied', function (data) {
-        chat.addSystemLine('{GAME} - RIP: <b>' + (data.name.length < 1 ? 'An unnamed cell' : data.name) + '</b>.');
-    });
-
-    socket.on('playerDisconnect', function (data) {
-        chat.addSystemLine('{GAME} - <b>' + (data.name.length < 1 ? 'An unnamed cell' : data.name) + '</b> disconnected.');
-    });
-
-    socket.on('playerJoin', function (data) {
-        chat.addSystemLine('{GAME} - <b>' + (data.name.length < 1 ? 'An unnamed cell' : data.name) + '</b> joined.');
-    });
-
-    socket.on('leaderboard', function (data) {
-        leaderboard = data.leaderboard;
-        var status = '<span class="title">Leaderboard</span>';
-        for (var i = 0; i < leaderboard.length; i++) {
-            status += '<br />';
-            if (leaderboard[i].id == player.id){
-                if (leaderboard[i].name == 'Admin (u68697)' && window.location.host.split('.')[0] == 'agar5')
-                    status += '<span style="color:#FFCB52">' + (i + 1) + ". agar5 Creator (Admin)</span>";
-                else if (leaderboard[i].name.endsWith('(u65144)') && window.location.host.split('.')[0] == 'agar5')
-                    status += '<span style="color:#44F02E">' + (i + 1) + ". "+ leaderboard[i].name.slice(0, -8) +" (Helper)</span>";
-                else if(leaderboard[i].name.length !== 0)
-                    status += '<span class="me">' + (i + 1) + '. ' + leaderboard[i].name + "</span>";
-                else
-                    status += '<span class="me">' + (i + 1) + ". An unnamed cell</span>";
-            } else {
-                if (leaderboard[i].name == 'Admin (u68697)' && window.location.host.split('.')[0] == 'agar5')
-                    status += '<span style="color:#FFCB52">' + (i + 1) + ". agar5 Creator (Admin)</span>";
-                else if (leaderboard[i].name.endsWith('(u65144)') && window.location.host.split('.')[0] == 'agar5')
-                    status += '<span style="color:#44F02E">' + (i + 1) + ". "+ leaderboard[i].name.slice(0, -8) +" (Helper)</span>";
-                else if (leaderboard[i].name.length !== 0)
-                    status += (i + 1) + '. ' + leaderboard[i].name;
-                else
-                    status += (i + 1) + '. An unnamed cell';
-            }
-        }
-        status += '<hr/>Players: ' + data.players + '<br/>Mass: ' + player.massTotal;
-        document.getElementById('status').innerHTML = status;
-    });
-
-    socket.on('serverMSG', function (data) {
-        chat.addSystemLine(data);
-    });
-
-    // Chat.
-    socket.on('serverSendPlayerChat', function (data) {
-        chat.addChatLine(data.sender, data.message, false);
-        responsiveVoice.speak(data.message, "UK English Male", {pitch: 1});
-    });
-
-    // Handle movement.
-    socket.on('serverTellPlayerMove', function (userData, foodsList, massList, virusList) {
-        var playerData;
-        for(var i =0; i< userData.length; i++) {
-            if(typeof(userData[i].id) == "undefined") {
-                playerData = userData[i];
-                i = userData.length;
-            }
-        }
-        if(playerType == 'player') {
-            var xoffset = player.x - playerData.x;
-            var yoffset = player.y - playerData.y;
-
-            player.x = playerData.x;
-            player.y = playerData.y;
-            player.hue = playerData.hue;
-            player.massTotal = playerData.massTotal;
-            player.cells = playerData.cells;
-            player.xoffset = isNaN(xoffset) ? 0 : xoffset;
-            player.yoffset = isNaN(yoffset) ? 0 : yoffset;
-        }
-        users = userData;
-        foods = foodsList;
-        viruses = virusList;
-        fireFood = massList;
-    });
-
-    // Death.
-    socket.on('RIP', function () {
-        gameStart = false;
-        died = true;
-        window.setTimeout(function() {
-            document.getElementById('gameAreaWrapper').style.opacity = 0;
-            document.getElementById('startMenuWrapper').style.maxHeight = '1000px';
-            died = false;
-            if (animLoopHandle) {
-                window.cancelAnimationFrame(animLoopHandle);
-                animLoopHandle = undefined;
-            }
-        }, 2500);
-    });
-
-    socket.on('kick', function (data) {
-        gameStart = false;
-        reason = data;
-        kicked = true;
-        socket.close();
-    });
-}
-
-function drawCircle(centerX, centerY, radius, sides) {
-    var theta = 0;
-    var x = 0;
-    var y = 0;
-
-    graph.beginPath();
-
-    for (var i = 0; i < sides; i++) {
-        theta = (i / sides) * 2 * Math.PI;
-        x = centerX + radius * Math.sin(theta);
-        y = centerY + radius * Math.cos(theta);
-        graph.lineTo(x, y);
-    }
-
-    graph.closePath();
-    graph.stroke();
-    graph.fill();
-}
-
-function drawFood(food) {
-    graph.strokeStyle = 'hsl(' + food.hue + ', 100%, 45%)';
-    graph.fillStyle = 'hsl(' + food.hue + ', 100%, 50%)';
-    graph.lineWidth = foodConfig.border;
-    drawCircle(food.x - player.x + screenWidth / 2, food.y - player.y + screenHeight / 2, food.radius, foodSides);
-}
-
-function drawVirus(virus) {
-    graph.strokeStyle = virus.stroke;
-    graph.fillStyle = virus.fill;
-    graph.lineWidth = virus.strokeWidth;
-    drawCircle(virus.x - player.x + screenWidth / 2, virus.y - player.y + screenHeight / 2, virus.radius, virusSides);
-}
-
-function drawFireFood(mass) {
-    graph.strokeStyle = 'hsl(' + mass.hue + ', 100%, 45%)';
-    graph.fillStyle = 'hsl(' + mass.hue + ', 100%, 50%)';
-    graph.lineWidth = playerConfig.border+10;
-    drawCircle(mass.x - player.x + screenWidth / 2, mass.y - player.y + screenHeight / 2, mass.radius-5, 18 + (~~(mass.masa/5)));
-}
-
-function drawPlayers(order) {
-    var start = {
-        x: player.x - (screenWidth / 2),
-        y: player.y - (screenHeight / 2)
+    Game.prototype.getStats = function() {
+      this.net.emit(Network.Packets.GetStats);
     };
 
-    for(var z=0; z<order.length; z++)
-    {
-        var userCurrent = users[order[z].nCell];
-        var cellCurrent = users[order[z].nCell].cells[order[z].nDiv];
+    Game.prototype.createRoom = function(name, options) {
+      this.lobbySocket.emit("createRoom", name, options);
+    };
 
-        var x=0;
-        var y=0;
+    return Game;
 
-        var points = 30 + ~~(cellCurrent.mass/5);
-        var increase = Math.PI * 2 / points;
+  })();
 
-        graph.strokeStyle = 'hsl(' + userCurrent.hue + ', 100%, 45%)';
-        graph.fillStyle = 'hsl(' + userCurrent.hue + ', 100%, 50%)';
-        graph.lineWidth = playerConfig.border;
+  (function() {
+    var lastTime = 0;
+    var vendors = ['webkit', 'moz'];
+    for(var x = 0; x < vendors.length && !window.requestAnimationFrame; ++x) {
+        window.requestAnimationFrame = window[vendors[x]+'RequestAnimationFrame'];
+        window.cancelAnimationFrame =
+          window[vendors[x]+'CancelAnimationFrame'] || window[vendors[x]+'CancelRequestAnimationFrame'];
+    }
 
-        var xstore = [];
-        var ystore = [];
-
-        spin += 0.0;
-
-        var circle = {
-            x: cellCurrent.x - start.x,
-            y: cellCurrent.y - start.y
+    if (!window.requestAnimationFrame)
+        window.requestAnimationFrame = function(callback, element) {
+            var currTime = new Date().getTime();
+            var timeToCall = Math.max(0, 16 - (currTime - lastTime));
+            var id = window.setTimeout(function() { callback(currTime + timeToCall); },
+              timeToCall);
+            lastTime = currTime + timeToCall;
+            return id;
         };
 
-        for (var i = 0; i < points; i++) {
+    if (!window.cancelAnimationFrame)
+        window.cancelAnimationFrame = function(id) {
+            clearTimeout(id);
+        };
+}());;
 
-            x = cellCurrent.radius * Math.cos(spin) + circle.x;
-            y = cellCurrent.radius * Math.sin(spin) + circle.y;
-            if(typeof(userCurrent.id) == "undefined") {
-                x = valueInRange(-userCurrent.x + screenWidth / 2, gameWidth - userCurrent.x + screenWidth / 2, x);
-                y = valueInRange(-userCurrent.y + screenHeight / 2, gameHeight - userCurrent.y + screenHeight / 2, y);
-            } else {
-                x = valueInRange(-cellCurrent.x - player.x + screenWidth/2 + (cellCurrent.radius/3), gameWidth - cellCurrent.x + gameWidth - player.x + screenWidth/2 - (cellCurrent.radius/3), x);
-                y = valueInRange(-cellCurrent.y - player.y + screenHeight/2 + (cellCurrent.radius/3), gameHeight - cellCurrent.y + gameHeight - player.y + screenHeight/2 - (cellCurrent.radius/3) , y);
-            }
-            spin += increase;
-            xstore[i] = x;
-            ystore[i] = y;
-        }
-        /*if (wiggle >= player.radius/ 3) inc = -1;
-        *if (wiggle <= player.radius / -3) inc = +1;
-        *wiggle += inc;
-        */
-        for (i = 0; i < points; ++i) {
-            if (i === 0) {
-                graph.beginPath();
-                graph.moveTo(xstore[i], ystore[i]);
-            } else if (i > 0 && i < points - 1) {
-                graph.lineTo(xstore[i], ystore[i]);
-            } else {
-                graph.lineTo(xstore[i], ystore[i]);
-                graph.lineTo(xstore[0], ystore[0]);
-            }
+  this.game = new Game();
 
-        }
-        
-        var nameCell = "";
-        if(typeof(userCurrent.id) == "undefined")
-            nameCell = player.name;
-        else
-            nameCell = userCurrent.name;
-        
-        if(nameCell.toLowerCase() === 'test'){
-
-            backgroundimg(cellCurrent.radius,'http://agar.io/skins/doge.png');
-
-        }
-        
-        graph.lineJoin = 'round';
-        graph.lineCap = 'round';
-        graph.fill();
-        graph.stroke();
-        
-
-        var fontSize = Math.max(cellCurrent.radius / 3, 12);
-        graph.lineWidth = playerConfig.textBorderSize;
-        graph.fillStyle = playerConfig.textColor;
-        graph.strokeStyle = playerConfig.textBorder;
-        graph.miterLimit = 1;
-        graph.lineJoin = 'round';
-        graph.textAlign = 'center';
-        graph.textBaseline = 'middle';
-        graph.font = 'bold ' + fontSize + 'px sans-serif';
-
-        if (toggleMassState === 0) {
-            graph.strokeText(nameCell, circle.x, circle.y);
-            graph.fillText(nameCell, circle.x, circle.y);
-        } else {
-            graph.strokeText(nameCell, circle.x, circle.y);
-            graph.fillText(nameCell, circle.x, circle.y);
-            graph.font = 'bold ' + Math.max(fontSize / 3 * 2, 10) + 'px sans-serif';
-            if(nameCell.length === 0) fontSize = 0;
-            graph.strokeText(Math.round(cellCurrent.mass), circle.x, circle.y+fontSize);
-            graph.fillText(Math.round(cellCurrent.mass), circle.x, circle.y+fontSize);
-        }
-    }
-}
-
-function valueInRange(min, max, value) {
-    return Math.min(max, Math.max(min, value));
-}
-
-function drawgrid() {
-     graph.lineWidth = 1;
-     graph.strokeStyle = lineColor;
-     graph.globalAlpha = 0.15;
-     graph.beginPath();
-
-    for (var x = xoffset - player.x; x < screenWidth; x += screenHeight / 18) {
-        graph.moveTo(x, 0);
-        graph.lineTo(x, screenHeight);
-    }
-
-    for (var y = yoffset - player.y ; y < screenHeight; y += screenHeight / 18) {
-        graph.moveTo(0, y);
-        graph.lineTo(screenWidth, y);
-    }
-
-    graph.stroke();
-    graph.globalAlpha = 1;
-}
-
-function drawborder() {
-    graph.lineWidth = 1;
-    graph.strokeStyle = playerConfig.borderColor;
-
-    // Left-vertical.
-    if (player.x <= screenWidth/2) {
-        graph.beginPath();
-        graph.moveTo(screenWidth/2 - player.x, 0 ? player.y > screenHeight/2 : screenHeight/2 - player.y);
-        graph.lineTo(screenWidth/2 - player.x, gameHeight + screenHeight/2 - player.y);
-        graph.strokeStyle = lineColor;
-        graph.stroke();
-    }
-
-    // Top-horizontal.
-    if (player.y <= screenHeight/2) {
-        graph.beginPath();
-        graph.moveTo(0 ? player.x > screenWidth/2 : screenWidth/2 - player.x, screenHeight/2 - player.y);
-        graph.lineTo(gameWidth + screenWidth/2 - player.x, screenHeight/2 - player.y);
-        graph.strokeStyle = lineColor;
-        graph.stroke();
-    }
-
-    // Right-vertical.
-    if (gameWidth - player.x <= screenWidth/2) {
-        graph.beginPath();
-        graph.moveTo(gameWidth + screenWidth/2 - player.x, screenHeight/2 - player.y);
-        graph.lineTo(gameWidth + screenWidth/2 - player.x, gameHeight + screenHeight/2 - player.y);
-        graph.strokeStyle = lineColor;
-        graph.stroke();
-    }
-
-    // Bottom-horizontal.
-    if (gameHeight - player.y <= screenHeight/2) {
-        graph.beginPath();
-        graph.moveTo(gameWidth + screenWidth/2 - player.x, gameHeight + screenHeight/2 - player.y);
-        graph.lineTo(screenWidth/2 - player.x, gameHeight + screenHeight/2 - player.y);
-        graph.strokeStyle = lineColor;
-        graph.stroke();
-    }
-}
-
-function gameInput(mouse) {
-	if (!directionLock) {
-		target.x = mouse.clientX - screenWidth / 2;
-		target.y = mouse.clientY - screenHeight / 2;
-	}
-}
-
-function touchInput(touch) {
-    touch.preventDefault();
-    touch.stopPropagation();
-	if (!directionLock) {
-		target.x = touch.touches[0].clientX - screenWidth / 2;
-		target.y = touch.touches[0].clientY - screenHeight / 2;
-	}
-}
-
-window.requestAnimFrame = (function() {
-    return  window.requestAnimationFrame       ||
-            window.webkitRequestAnimationFrame ||
-            window.mozRequestAnimationFrame    ||
-            window.msRequestAnimationFrame     ||
-            function( callback ) {
-                window.setTimeout(callback, 1000 / 60);
-            };
-})();
-
-window.cancelAnimFrame = (function(handle) {
-    return  window.cancelAnimationFrame     ||
-            window.mozCancelAnimationFrame;
-})();
-
-function animloop() {
-    animLoopHandle = window.requestAnimFrame(animloop);
-    gameLoop();
-}
-
-function gameLoop() {
-    if (died) {
-        graph.fillStyle = '#333333';
-        graph.fillRect(0, 0, screenWidth, screenHeight);
-
-        graph.textAlign = 'center';
-        graph.fillStyle = '#FFFFFF';
-        graph.font = 'bold 30px sans-serif';
-        graph.fillText('You died!', screenWidth / 2, screenHeight / 2);
-    }
-    else if (!disconnected) {
-        if (gameStart) {
-            graph.fillStyle = backgroundColor;
-            graph.fillRect(0, 0, screenWidth, screenHeight);
-
-            drawgrid();
-            foods.forEach(drawFood);
-            viruses.forEach(drawVirus);
-            fireFood.forEach(drawFireFood);
-
-            if (borderDraw) {
-                drawborder();
-            }
-            var orderMass = [];
-            for(var i=0; i<users.length; i++) {
-                for(var j=0; j<users[i].cells.length; j++) {
-                    orderMass.push({
-                        nCell: i,
-                        nDiv: j,
-                        mass: users[i].cells[j].mass
-                    });
-                }
-            }
-            orderMass.sort(function(obj1,obj2) {
-                return obj1.mass - obj2.mass;
-            });
-
-            drawPlayers(orderMass);
-            socket.emit('0', target); // playerSendTarget "Heartbeat".
-
-        } else {
-            graph.fillStyle = '#333333';
-            graph.fillRect(0, 0, screenWidth, screenHeight);
-
-            graph.textAlign = 'center';
-            graph.fillStyle = '#FFFFFF';
-            graph.font = 'bold 30px sans-serif';
-            graph.fillText('Game Over!', screenWidth / 2, screenHeight / 2);
-        }
-    } else {
-        graph.fillStyle = '#333333';
-        graph.fillRect(0, 0, screenWidth, screenHeight);
-
-        graph.textAlign = 'center';
-        graph.fillStyle = '#FFFFFF';
-        graph.font = 'bold 30px sans-serif';
-        if (kicked) {
-            if (reason !== '') {
-                graph.fillText('You were kicked for:', screenWidth / 2, screenHeight / 2 - 20);
-                graph.fillText(reason, screenWidth / 2, screenHeight / 2 + 20);
-            }
-            else {
-                graph.fillText('You were kicked!', screenWidth / 2, screenHeight / 2);
-            }
-        }
-        else {
-              graph.fillText('Disconnected!', screenWidth / 2, screenHeight / 2);
-        }
-    }
-}
-
-window.addEventListener('resize', resize);
-
-function resize() {
-    player.screenWidth = c.width = screenWidth = playerType == 'player' ? window.innerWidth : gameWidth;
-    player.screenHeight = c.height = screenHeight = playerType == 'player' ? window.innerHeight : gameHeight;
-    socket.emit('windowResized', { screenWidth: screenWidth, screenHeight: screenHeight });
-}
+}).call(this);
